@@ -1,14 +1,17 @@
-import { Navigate } from 'react-router'
+import { Navigate } from "react-router";
 
 interface ProtectedRouteProps {
-  user: { name: string; email: string; picture: string } | null
-  children: React.ReactNode
+	user: { name: string; email: string; picture: string } | null;
+	children: React.ReactNode;
 }
 
-export default function ProtectedRoute({ user, children }: ProtectedRouteProps) {
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
+export default function ProtectedRoute({
+	user,
+	children,
+}: ProtectedRouteProps) {
+	if (!user) {
+		return <Navigate to="/login" replace />;
+	}
 
-  return <>{children}</>
+	return <>{children}</>;
 }
