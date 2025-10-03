@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
 import "./App.css";
-import Login from "./pages/Login";
-import Home from "./pages/Home";
-import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "@/pages/Login";
+import Home from "@/pages/Home";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import ReceiptList from "@/pages/ReceiptList";
+import ReceiptUpload from "@/pages/ReceiptUpload";
+import ReceiptEdit from "@/pages/ReceiptEdit";
+//import ReceiptSplit from "./pages/ReceiptSplit";
 
 interface UserData {
 	name: string;
@@ -55,6 +59,40 @@ function App() {
 				/>
 				<Route
 					path="/"
+					element={
+						<ProtectedRoute user={user}>
+							<ReceiptList />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path="/upload"
+					element={
+						<ProtectedRoute user={user}>
+							<ReceiptUpload />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path="/edit/:id"
+					element={
+						<ProtectedRoute user={user}>
+							<ReceiptEdit />
+						</ProtectedRoute>
+					}
+				/>
+				{/* 
+				<Route
+					path="/split/:id"
+					element={
+						<ProtectedRoute user={user}>
+							<ReceiptSplit />
+						</ProtectedRoute>
+					}
+				/>
+				*/}
+				<Route
+					path="/home"
 					element={
 						<ProtectedRoute user={user}>
 							<Home user={user!} onSignOut={handleSignOut} />
