@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router";
-import type { Receipt as ReceiptType } from "@/types/receipt";
 import { Receipt } from "@/components/ui/receipt";
+import { useReceiptStore } from "@/stores/receiptStore";
 
 export default function ReceiptEdit() {
 	const { id } = useParams<{ id: string }>();
-	const [receipt, setReceipt] = useState<ReceiptType | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const setReceipt = useReceiptStore((state) => state.setReceipt);
+	const setImageData = useReceiptStore((state) => state.setImageData);
 
 	useEffect(() => {
 		const loadImage = () => {
 			const storedImage = sessionStorage.getItem(`receipt_image_${id}`);
 			if (storedImage) {
+				setImageData(storedImage);
 				processImage(storedImage);
 			} else {
 				setError("No image found");
@@ -19,7 +21,7 @@ export default function ReceiptEdit() {
 		};
 
 		loadImage();
-	}, [id]);
+	}, [id, setImageData]);
 
 	const processImage = async (imageData: string) => {
 		try {
@@ -60,7 +62,7 @@ export default function ReceiptEdit() {
 		<div className="min-h-screen bg-gray-50 p-4">
 			<div className="max-w-6xl mx-auto">
 				<h1 className="text-3xl font-bold mb-6 text-center">Edit Receipt</h1>
-				{receipt && <Receipt receipt={receipt} />}
+				<Receipt />
 			</div>
 		</div>
 	);

@@ -1,7 +1,8 @@
 import type { Receipt, ReceiptItem } from "@/types/receipt";
+import { useReceiptStore } from "@/stores/receiptStore";
 
 interface ReceiptProps {
-	receipt: Receipt;
+	receipt?: Receipt;
 }
 
 function ReceiptRow({ item }: { item: ReceiptItem }) {
@@ -13,11 +14,23 @@ function ReceiptRow({ item }: { item: ReceiptItem }) {
 	);
 }
 
-export function Receipt({ receipt }: ReceiptProps) {
+export function Receipt({ receipt: receiptProp }: ReceiptProps) {
+	const currentReceipt = useReceiptStore((state) => state.currentReceipt);
+	const receipt = receiptProp ?? currentReceipt;
+
+	if (!receipt) {
+		return null;
+	}
+
 	const lineItems = receipt.items.filter(
 		(item) => item.name !== "TAX" && item.name !== "TIP",
 	);
-	const subTotal = receipt.items.reduce((sum, item) => sum + item.price, 0);
+	const subTotal = {
+		id: "",
+		name: "SUBTOTAL",
+		price: lineItems.reduce((sum, item) => sum + item.price, 0),
+		taxed: false
+	};
 	const tax = receipt.items.find((item) => item.name === "TAX") ?? {
 		id: "",
 		name: "TAX",
@@ -30,7 +43,7 @@ export function Receipt({ receipt }: ReceiptProps) {
 		price: 0,
 		taxed: false,
 	};
-	const grandTotal = subTotal + tax.price + tip.price;
+	const grandTotal = subTotal.price + tax.price + tip.price;
 
 	return (
 		<div className="max-w-md mx-auto bg-white shadow-lg p-6 font-mono text-sm h-fit">
@@ -45,10 +58,7 @@ export function Receipt({ receipt }: ReceiptProps) {
 			</div>
 
 			<div className="border-t-2 border-gray-400 pt-3 mt-4 space-y-2">
-				<div className="flex justify-between">
-					<span>SUBTOTAL</span>
-					<span>${(subTotal / 100).toFixed(2)}</span>
-				</div>
+				<ReceiptRow item={subTotal} />
 				<ReceiptRow item={tip} />
 				<ReceiptRow item={tax} />
 			</div>
