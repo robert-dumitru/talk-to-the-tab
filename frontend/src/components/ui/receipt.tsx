@@ -1,48 +1,45 @@
 import type { Receipt, ReceiptItem } from "@/types/receipt";
 
-interface ReceiptPaperProps {
+interface ReceiptProps {
 	receipt: Receipt;
 }
 
-export default function ReceiptPaper({ receipt }: ReceiptPaperProps) {
-	const getItemTotal = (item: ReceiptItem) => {
-		return (item.price / 100).toFixed(2);
-	};
+function ReceiptRow({ item }: { item: ReceiptItem }) {
+    return (
+        <div className="flex justify-between">
+            <span>{item.name}</span>
+            <span>${(item.price / 100).toFixed(2)}</span>
+        </div>
+    );
+}
 
-	const getSubtotal = () => {
+export function Receipt({ receipt }: ReceiptProps) {
+	const getSubtotal = (receipt: Receipt) => {
 		return receipt.items.reduce((sum, item) => sum + item.price, 0);
 	};
 
-	const getGrandTotal = () => {
-		return getSubtotal() + receipt.tax + receipt.tip;
+	const getGrandTotal = (receipt: Receipt) => {
+		return getSubtotal(receipt) + receipt.tax + receipt.tip;
 	};
 
 	return (
 		<div className="max-w-md mx-auto bg-white shadow-lg p-6 font-mono text-sm h-fit">
 			<div className="border-b-2 border-dashed border-gray-400 pb-4 mb-4">
 				<h2 className="text-center text-lg font-bold">RECEIPT</h2>
-				<p className="text-center text-xs text-gray-600">
-					{new Date(receipt.createdAt).toLocaleDateString()}
-				</p>
 			</div>
 
-			<div className="space-y-2 mb-4">
+			<div className="space-y-2">
 				{receipt.items.map((item) => {
-					return (
-						<div key={item.id} className="border-b border-gray-200 pb-2">
-							<div className="flex justify-between">
-								<span>{item.name}</span>
-								<span>${getItemTotal(item)}</span>
-							</div>
-						</div>
-					);
+                    return (
+					<ReceiptRow key={item.id} item={item} />
+                    );
 				})}
 			</div>
 
 			<div className="border-t-2 border-gray-400 pt-3 mt-4">
 				<div className="flex justify-between">
 					<span>SUBTOTAL</span>
-					<span>${(getSubtotal() / 100).toFixed(2)}</span>
+					<span>${(getSubtotal(receipt) / 100).toFixed(2)}</span>
 				</div>
 				<div className="flex justify-between mt-1">
 					<span>TAX</span>
@@ -57,7 +54,7 @@ export default function ReceiptPaper({ receipt }: ReceiptPaperProps) {
 			<div className="border-t-2 border-double border-gray-600 pt-3 mt-3">
 				<div className="flex justify-between font-bold text-base">
 					<span>TOTAL</span>
-					<span>${(getGrandTotal() / 100).toFixed(2)}</span>
+					<span>${(getGrandTotal(receipt) / 100).toFixed(2)}</span>
 				</div>
 			</div>
 		</div>

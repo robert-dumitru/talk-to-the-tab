@@ -5,17 +5,23 @@ export interface ReceiptItem {
 	taxed: boolean;
 }
 
-export interface Split {
-	person: string;
-	portion: number; // fraction of the item (1.0 = full item, 0.5 = half)
-}
-
 export interface Receipt {
 	id: string;
-	image: string; // base64 encoded image
 	items: ReceiptItem[];
-	tax: number; // tax amount in cents
-	tip: number; // tip amount in cents
-	splits: Record<string, Split[]>; // itemId -> list of splits
+	tax: number;
+	tip: number;
 	createdAt: number;
+}
+
+export interface ProportionalSplit {
+	type: "proportional";
+	user: string;
+	shares: number;
+	total: number;
+}
+
+export interface AbsoluteSplit {
+	type: "absolute";
+	user: string;
+	amount: number;
 }

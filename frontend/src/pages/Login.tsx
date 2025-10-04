@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
+import { Container } from "@/components/ui/container";
 
 interface LoginProps {
 	user: { name: string; email: string; picture: string } | null;
@@ -70,10 +71,17 @@ export default function Login({ user, onLogin }: LoginProps) {
 	};
 
 	return (
-		<div>
-			<h1>Sign In with Google</h1>
-			<p>Please sign in to continue</p>
-			<div ref={buttonRef}></div>
+		<div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+			<div className="w-full max-w-md">
+				<Container>
+					<div className="flex flex-col items-center gap-4">
+						<h1 className="text-2xl font-light text-slate-900 tracking-tight">
+							Please Sign In to Continue:
+						</h1>
+						<div ref={buttonRef}></div>
+					</div>
+				</Container>
+			</div>
 		</div>
 	);
 }

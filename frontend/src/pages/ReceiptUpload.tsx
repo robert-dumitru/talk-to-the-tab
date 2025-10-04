@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
 
 export default function ReceiptUpload() {
 	const [image, setImage] = useState<string | null>(null);
@@ -13,11 +14,11 @@ export default function ReceiptUpload() {
 			reader.onload = (e) => {
 				const img = new Image();
 				img.onload = () => {
+					// This compresses the image so we don't blow up localStorage
 					const canvas = document.createElement("canvas");
 					const ctx = canvas.getContext("2d");
 					if (!ctx) return;
 
-					// Max width/height to reduce file size
 					const MAX_WIDTH = 800;
 					const MAX_HEIGHT = 800;
 					let width = img.width;
@@ -39,7 +40,6 @@ export default function ReceiptUpload() {
 					canvas.height = height;
 					ctx.drawImage(img, 0, 0, width, height);
 
-					// Compress to JPEG with 0.7 quality
 					resolve(canvas.toDataURL("image/jpeg", 0.7));
 				};
 				img.src = e.target?.result as string;
@@ -65,11 +65,12 @@ export default function ReceiptUpload() {
 
 	return (
 		<div className="min-h-screen bg-gray-50 p-4">
-			<div className="max-w-md mx-auto mt-8">
+			<div className="max-w-4xl mx-auto">
 				<h1 className="text-3xl font-bold mb-8 text-center">Upload Receipt</h1>
 
 				{!image ? (
-					<div className="bg-white shadow-lg rounded-lg p-8">
+					<Container>
+						<div className="flex flex-col items-center">
 						<input
 							ref={fileInputRef}
 							type="file"
@@ -85,7 +86,8 @@ export default function ReceiptUpload() {
 						<p className="text-center text-gray-600 mt-4 text-sm">
 							Upload a photo of your receipt to get started
 						</p>
-					</div>
+						</div>
+					</Container>
 				) : (
 					<div className="bg-white shadow-lg rounded-lg p-4">
 						<img
