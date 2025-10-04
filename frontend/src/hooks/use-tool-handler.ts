@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { GenAILiveClient } from "@/lib/genai/live-client";
-import type { LiveServerToolCall } from "@google/genai";
+import { type LiveServerToolCall, FunctionResponseScheduling } from "@google/genai";
 import { useReceiptStore } from "@/stores/receiptStore";
 import type { ToolCall } from "@/stores/receiptStore";
 
@@ -10,7 +10,7 @@ import type { ToolCall } from "@/stores/receiptStore";
  * and sends responses back to the API.
  */
 export function useToolHandler(client: GenAILiveClient | null) {
-	const applyToolCall = useReceiptStore((state) => state.applyToolCall);
+	const addToolCall = useReceiptStore((state) => state.addToolCall);
 
 	useEffect(() => {
 		if (!client) return;
@@ -25,30 +25,39 @@ export function useToolHandler(client: GenAILiveClient | null) {
 				// Process each function call
 				const functionResponses = functionCalls.map((fc) => {
 					try {
-						// Convert to our ToolCall format and apply to store
+						// For add_receipt_item, ensure the args include an ID
+						let args = fc.args || {};
+						if (fc.name === "add_receipt_item" && !args.id) {
+							args = { ...args, id: crypto.randomUUID() };
+						}
+
+						// Convert to our ToolCall format and add to store
 						const localToolCall: ToolCall = {
 							id: fc.id || crypto.randomUUID(),
 							timestamp: Date.now(),
 							functionName: fc.name || "",
-							args: fc.args || {},
+							args,
 						};
 
-						applyToolCall(localToolCall);
+						addToolCall(localToolCall);
 
 						// Return success response
 						return {
 							id: fc.id,
+							name: fc.name,
 							response: {
-								success: true,
-								message: `Successfully executed ${fc.name}`,
+								result: "ok",
+								scheduling: FunctionResponseScheduling.SILENT,
 							},
 						};
 					} catch (error) {
 						console.error(`Error executing tool call ${fc.name}:`, error);
 						return {
 							id: fc.id,
+							name: fc.name,
 							response: {
-								success: false,
+								result: "error",
+								scheduling: FunctionResponseScheduling.SILENT,
 								error:
 									error instanceof Error ? error.message : "Unknown error",
 							},
@@ -72,5 +81,5 @@ export function useToolHandler(client: GenAILiveClient | null) {
 		return () => {
 			client.off("toolcall", handleToolCall);
 		};
-	}, [client, applyToolCall]);
+	}, [client, addToolCall]);
 }

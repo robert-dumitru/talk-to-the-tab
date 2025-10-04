@@ -1,5 +1,5 @@
 import type { Receipt, ReceiptItem } from "@/types/receipt";
-import { useReceiptStore } from "@/stores/receiptStore";
+import { useCurrentReceipt } from "@/hooks/use-current-receipt";
 
 interface ReceiptProps {
 	receipt?: Receipt;
@@ -15,7 +15,7 @@ function ReceiptRow({ item }: { item: ReceiptItem }) {
 }
 
 export function Receipt({ receipt: receiptProp }: ReceiptProps) {
-	const currentReceipt = useReceiptStore((state) => state.currentReceipt);
+	const currentReceipt = useCurrentReceipt();
 	const receipt = receiptProp ?? currentReceipt;
 
 	if (!receipt) {

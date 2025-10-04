@@ -23,6 +23,7 @@ export const receiptTools: Tool[] = [
 						},
 					},
 					required: ["name", "price", "quantity"],
+					
 				},
 			},
 			{
