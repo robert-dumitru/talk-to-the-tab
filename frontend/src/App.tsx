@@ -6,12 +6,23 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ReceiptList from "@/pages/ReceiptList";
 import ReceiptUpload from "@/pages/ReceiptUpload";
 import ReceiptEdit from "@/pages/ReceiptEdit";
+import { LiveAPIProvider } from "@/contexts/LiveAPIContext";
+import { type LiveClientOptions } from "@/types/genai";
 
 interface UserData {
 	name: string;
 	email: string;
 	picture: string;
 }
+
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
+if (typeof API_KEY !== "string") {
+  throw new Error("set VITE_GEMINI_API_KEY in .env");
+}
+
+const apiOptions: LiveClientOptions = {
+  apiKey: API_KEY,
+};
 
 function App() {
 	const [user, setUser] = useState<UserData | null>(null);
@@ -35,21 +46,10 @@ function App() {
 		checkAuth();
 	}, []);
 
-	const handleSignOut = async () => {
-		try {
-			await fetch("http://localhost:8000/auth/logout", {
-				method: "POST",
-				credentials: "include",
-			});
-		} catch (error) {
-			console.error("Logout error:", error);
-		}
-
-		setUser(null);
-	};
-
 	return (
 		<BrowserRouter>
+			<LiveAPIProvider options={apiOptions}>
+
 			<Routes>
 				<Route
 					path="/login"
@@ -80,6 +80,7 @@ function App() {
 					}
 				/>
 			</Routes>
+			</LiveAPIProvider>
 		</BrowserRouter>
 	);
 }

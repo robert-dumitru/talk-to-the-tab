@@ -214,4 +214,32 @@ async def get_ephemeral_key(session: str = Cookie(None)):
     if not api_key:
         raise HTTPException(status_code=500, detail="Gemini API key not configured")
 
-    return {"api_key": api_key}
+    try:
+        from datetime import datetime, timedelta, timezone
+
+        client = genai.Client(api_key=api_key)
+
+        # Calculate expiration times
+        now = datetime.now(timezone.utc)
+        expire_time = now + timedelta(minutes=30)
+        new_session_expire_time = now + timedelta(minutes=1)
+
+        # Create ephemeral token
+        token_response = client.auth_tokens.create(
+            config=types.CreateAuthTokenConfig(
+                expire_time=expire_time,
+                new_session_expire_time=new_session_expire_time,
+                uses=1,  # Single use token
+                http_options=types.HttpOptions(
+                    api_version="v1alpha",
+                )
+            )
+        )
+
+        return {
+            "token": token_response.name,
+            "expires_at": expire_time.isoformat()
+        }
+    except Exception as e:
+        print(f"Error creating ephemeral token: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create ephemeral token")
