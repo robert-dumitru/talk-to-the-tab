@@ -11,7 +11,6 @@ import secrets
 import json
 import base64
 
-# Load environment variables from .env file
 load_dotenv()
 
 app = FastAPI()
@@ -39,21 +38,16 @@ class ReceiptItem(BaseModel):
     price: int  # price in cents
     taxed: bool
 
-# Schema for Gemini structured output (without id field)
 class ReceiptItemRaw(BaseModel):
     name: str
-    price: int  # price in cents
+    price: int  
     taxed: bool
 
 class ReceiptItemsRaw(BaseModel):
     items: list[ReceiptItemRaw]
-    tax: int = 0  # tax amount in cents
-    tip: int = 0  # tip amount in cents
 
 class OCRResponse(BaseModel):
     items: list[ReceiptItem]
-    tax: int  # tax amount in cents
-    tip: int  # tip amount in cents
 
 # In-memory session store (use Redis or database in production)
 sessions = {}
@@ -153,14 +147,13 @@ async def ocr_receipt(request: OCRRequest, session: str = Cookie(None)):
             Rules:
             - price must be in cents (multiply dollars by 100)
             - taxed should be true for items that have tax applied
-            - Extract tax amount separately (in cents). If no tax is shown, set to 0
-            - Extract tip amount separately (in cents). If no tip is shown, set to 0
-            - The items array should only contain line items, not tax or tip
+            - Always make a special item called "TAX". If no tax is shown, set to 0
+            - Always make a special item called "TIP". If no tip is shown, set to 0
             - Return structured JSON matching the schema
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.5-flash",
             contents=[
                 prompt,
                 types.Part.from_bytes(
@@ -192,8 +185,6 @@ async def ocr_receipt(request: OCRRequest, session: str = Cookie(None)):
 
         return OCRResponse(
             items=items_with_ids,
-            tax=parsed_data.tax,
-            tip=parsed_data.tip
         )
 
     except Exception as e:

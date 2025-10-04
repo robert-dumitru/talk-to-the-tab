@@ -15,10 +15,10 @@
  */
 
 import {
-  type GoogleGenAIOptions,
-  LiveClientToolResponse,
-  LiveServerMessage,
-  type Part,
+	type GoogleGenAIOptions,
+	LiveClientToolResponse,
+	LiveServerMessage,
+	type Part,
 } from "@google/genai";
 
 /**
@@ -28,17 +28,17 @@ export type LiveClientOptions = GoogleGenAIOptions & { apiKey: string };
 
 /** log types */
 export type StreamingLog = {
-  date: Date;
-  type: string;
-  count?: number;
-  message:
-    | string
-    | ClientContentLog
-    | Omit<LiveServerMessage, "text" | "data">
-    | LiveClientToolResponse;
+	date: Date;
+	type: string;
+	count?: number;
+	message:
+		| string
+		| ClientContentLog
+		| Omit<LiveServerMessage, "text" | "data">
+		| LiveClientToolResponse;
 };
 
 export type ClientContentLog = {
-  turns: Part[];
-  turnComplete: boolean;
+	turns: Part[];
+	turnComplete: boolean;
 };

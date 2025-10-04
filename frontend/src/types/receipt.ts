@@ -8,8 +8,6 @@ export interface ReceiptItem {
 export interface Receipt {
 	id: string;
 	items: ReceiptItem[];
-	tax: number;
-	tip: number;
 	createdAt: number;
 }
 

@@ -60,11 +60,7 @@ export default function ReceiptEdit() {
 		<div className="min-h-screen bg-gray-50 p-4">
 			<div className="max-w-6xl mx-auto">
 				<h1 className="text-3xl font-bold mb-6 text-center">Edit Receipt</h1>
-				{receipt &&
-					<Receipt
-						receipt={receipt}
-					/>
-				}
+				{receipt && <Receipt receipt={receipt} />}
 			</div>
 		</div>
 	);

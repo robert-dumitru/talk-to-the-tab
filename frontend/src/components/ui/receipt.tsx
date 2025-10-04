@@ -5,22 +5,32 @@ interface ReceiptProps {
 }
 
 function ReceiptRow({ item }: { item: ReceiptItem }) {
-    return (
-        <div className="flex justify-between">
-            <span>{item.name}</span>
-            <span>${(item.price / 100).toFixed(2)}</span>
-        </div>
-    );
+	return (
+		<div className="flex justify-between">
+			<span>{item.name}</span>
+			<span>${(item.price / 100).toFixed(2)}</span>
+		</div>
+	);
 }
 
 export function Receipt({ receipt }: ReceiptProps) {
-	const getSubtotal = (receipt: Receipt) => {
-		return receipt.items.reduce((sum, item) => sum + item.price, 0);
+	const lineItems = receipt.items.filter(
+		(item) => item.name !== "TAX" && item.name !== "TIP",
+	);
+	const subTotal = receipt.items.reduce((sum, item) => sum + item.price, 0);
+	const tax = receipt.items.find((item) => item.name === "TAX") ?? {
+		id: "",
+		name: "TAX",
+		price: 0,
+		taxed: false,
 	};
-
-	const getGrandTotal = (receipt: Receipt) => {
-		return getSubtotal(receipt) + receipt.tax + receipt.tip;
+	const tip = receipt.items.find((item) => item.name === "TIP") ?? {
+		id: "",
+		name: "TIP",
+		price: 0,
+		taxed: false,
 	};
+	const grandTotal = subTotal + tax.price + tip.price;
 
 	return (
 		<div className="max-w-md mx-auto bg-white shadow-lg p-6 font-mono text-sm h-fit">
@@ -29,32 +39,24 @@ export function Receipt({ receipt }: ReceiptProps) {
 			</div>
 
 			<div className="space-y-2">
-				{receipt.items.map((item) => {
-                    return (
-					<ReceiptRow key={item.id} item={item} />
-                    );
+				{lineItems.map((item) => {
+					return <ReceiptRow key={item.id} item={item} />;
 				})}
 			</div>
 
-			<div className="border-t-2 border-gray-400 pt-3 mt-4">
+			<div className="border-t-2 border-gray-400 pt-3 mt-4 space-y-2">
 				<div className="flex justify-between">
 					<span>SUBTOTAL</span>
-					<span>${(getSubtotal(receipt) / 100).toFixed(2)}</span>
+					<span>${(subTotal / 100).toFixed(2)}</span>
 				</div>
-				<div className="flex justify-between mt-1">
-					<span>TAX</span>
-					<span>${(receipt.tax / 100).toFixed(2)}</span>
-				</div>
-				<div className="flex justify-between mt-1">
-					<span>TIP</span>
-					<span>${(receipt.tip / 100).toFixed(2)}</span>
-				</div>
+				<ReceiptRow item={tip} />
+				<ReceiptRow item={tax} />
 			</div>
 
 			<div className="border-t-2 border-double border-gray-600 pt-3 mt-3">
 				<div className="flex justify-between font-bold text-base">
 					<span>TOTAL</span>
-					<span>${(getGrandTotal(receipt) / 100).toFixed(2)}</span>
+					<span>${(grandTotal / 100).toFixed(2)}</span>
 				</div>
 			</div>
 		</div>

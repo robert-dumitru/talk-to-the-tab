@@ -71,21 +71,21 @@ export default function ReceiptUpload() {
 				{!image ? (
 					<Container>
 						<div className="flex flex-col items-center">
-						<input
-							ref={fileInputRef}
-							type="file"
-							accept="image/*"
-							capture="environment"
-							onChange={handleFileChange}
-							className="hidden"
-						/>
-						<Button onClick={() => fileInputRef.current?.click()}>
-							Take Photo / Upload
-						</Button>
+							<input
+								ref={fileInputRef}
+								type="file"
+								accept="image/*"
+								capture="environment"
+								onChange={handleFileChange}
+								className="hidden"
+							/>
+							<Button onClick={() => fileInputRef.current?.click()}>
+								Take Photo / Upload
+							</Button>
 
-						<p className="text-center text-gray-600 mt-4 text-sm">
-							Upload a photo of your receipt to get started
-						</p>
+							<p className="text-center text-gray-600 mt-4 text-sm">
+								Upload a photo of your receipt to get started
+							</p>
 						</div>
 					</Container>
 				) : (

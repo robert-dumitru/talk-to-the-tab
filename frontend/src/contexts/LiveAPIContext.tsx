@@ -21,27 +21,27 @@ import { type LiveClientOptions } from "@/types/genai";
 const LiveAPIContext = createContext<UseLiveAPIResults | undefined>(undefined);
 
 export type LiveAPIProviderProps = {
-  children: ReactNode;
-  options: LiveClientOptions;
+	children: ReactNode;
+	options: LiveClientOptions;
 };
 
 export const LiveAPIProvider: FC<LiveAPIProviderProps> = ({
-  options,
-  children,
+	options,
+	children,
 }) => {
-  const liveAPI = useLiveAPI(options);
+	const liveAPI = useLiveAPI(options);
 
-  return (
-    <LiveAPIContext.Provider value={liveAPI}>
-      {children}
-    </LiveAPIContext.Provider>
-  );
+	return (
+		<LiveAPIContext.Provider value={liveAPI}>
+			{children}
+		</LiveAPIContext.Provider>
+	);
 };
 
 export const useLiveAPIContext = () => {
-  const context = useContext(LiveAPIContext);
-  if (!context) {
-    throw new Error("useLiveAPIContext must be used wihin a LiveAPIProvider");
-  }
-  return context;
+	const context = useContext(LiveAPIContext);
+	if (!context) {
+		throw new Error("useLiveAPIContext must be used wihin a LiveAPIProvider");
+	}
+	return context;
 };

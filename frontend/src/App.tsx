@@ -17,11 +17,11 @@ interface UserData {
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
 if (typeof API_KEY !== "string") {
-  throw new Error("set VITE_GEMINI_API_KEY in .env");
+	throw new Error("set VITE_GEMINI_API_KEY in .env");
 }
 
 const apiOptions: LiveClientOptions = {
-  apiKey: API_KEY,
+	apiKey: API_KEY,
 };
 
 function App() {
@@ -49,37 +49,36 @@ function App() {
 	return (
 		<BrowserRouter>
 			<LiveAPIProvider options={apiOptions}>
-
-			<Routes>
-				<Route
-					path="/login"
-					element={<Login user={user} onLogin={setUser} />}
-				/>
-				<Route
-					path="/"
-					element={
-						<ProtectedRoute user={user}>
-							<ReceiptList />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/upload"
-					element={
-						<ProtectedRoute user={user}>
-							<ReceiptUpload />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/edit/:id"
-					element={
-						<ProtectedRoute user={user}>
-							<ReceiptEdit />
-						</ProtectedRoute>
-					}
-				/>
-			</Routes>
+				<Routes>
+					<Route
+						path="/login"
+						element={<Login user={user} onLogin={setUser} />}
+					/>
+					<Route
+						path="/"
+						element={
+							<ProtectedRoute user={user}>
+								<ReceiptList />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/upload"
+						element={
+							<ProtectedRoute user={user}>
+								<ReceiptUpload />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/edit/:id"
+						element={
+							<ProtectedRoute user={user}>
+								<ReceiptEdit />
+							</ProtectedRoute>
+						}
+					/>
+				</Routes>
 			</LiveAPIProvider>
 		</BrowserRouter>
 	);
