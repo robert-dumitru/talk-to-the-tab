@@ -66,6 +66,68 @@ export const receiptTools: Tool[] = [
 					required: ["id"],
 				},
 			},
+			{
+				name: "add_split",
+				description: "Adds an absolute dollar amount split for an item, assigning a specific amount to a person.",
+				parameters: {
+					type: "OBJECT" as Type,
+					properties: {
+						itemId: {
+							type: "STRING" as Type,
+							description: "The ID of the receipt item to split",
+						},
+						person: {
+							type: "STRING" as Type,
+							description: "The name of the person this split is for",
+						},
+						amount: {
+							type: "NUMBER" as Type,
+							description: "The dollar amount in cents assigned to this person",
+						},
+					},
+					required: ["itemId", "person", "amount"],
+				},
+			},
+			{
+				name: "add_proportional_split",
+				description: "Adds a proportional split for an item, dividing it based on shares (e.g., 1/2, 2/3).",
+				parameters: {
+					type: "OBJECT" as Type,
+					properties: {
+						itemId: {
+							type: "STRING" as Type,
+							description: "The ID of the receipt item to split",
+						},
+						person: {
+							type: "STRING" as Type,
+							description: "The name of the person this split is for",
+						},
+						shares: {
+							type: "NUMBER" as Type,
+							description: "The number of shares this person gets (numerator)",
+						},
+						totalShares: {
+							type: "NUMBER" as Type,
+							description: "The total number of shares (denominator)",
+						},
+					},
+					required: ["itemId", "person", "shares", "totalShares"],
+				},
+			},
+			{
+				name: "remove_split",
+				description: "Removes a split by its ID.",
+				parameters: {
+					type: "OBJECT" as Type,
+					properties: {
+						id: {
+							type: "STRING" as Type,
+							description: "The unique identifier of the split to remove",
+						},
+					},
+					required: ["id"],
+				},
+			},
 		],
 	},
 ];

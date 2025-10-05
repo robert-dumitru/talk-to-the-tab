@@ -42,6 +42,8 @@ export function useReceiptVoiceControl(
 	receipt: Receipt | null,
 ): UseReceiptVoiceControlResult {
 	const addToolCall = useReceiptStore((state) => state.addToolCall);
+	const addSplit = useReceiptStore((state) => state.addSplit);
+	const removeSplit = useReceiptStore((state) => state.removeSplit);
 
 	// Create client once
 	const client = useMemo(
@@ -71,7 +73,7 @@ export function useReceiptVoiceControl(
 			)
 			.join("\n");
 
-		const systemInstruction = `You are a voice-controlled receipt editor. Listen to commands and make ONE tool call per command.
+		const systemInstruction = `You are a voice-controlled receipt editor with cost-splitting. Listen to commands and make ONE tool call per command.
 
 INITIAL RECEIPT (before any edits):
 ${receiptContext}
@@ -85,12 +87,19 @@ RULES:
 6. Do not repeat tool calls - they are shown on the frontend but not in the initial receipt
 
 AVAILABLE TOOLS:
+Receipt Items:
 - add_receipt_item(name, price, quantity): Add a new item
 - remove_receipt_item(id): Remove an item by ID
 - update_receipt_item(id, name?, price?, quantity?): Update an item
 
+Cost Splitting:
+- add_split(itemId, person, amount): Split item with absolute dollar amount in cents
+- add_proportional_split(itemId, person, shares, totalShares): Split item by proportional shares
+- remove_split(id): Remove a split by ID
+
 EXAMPLES:
 
+Receipt Items:
 Command: "Add coffee for 3 dollars"
 Tool Call: add_receipt_item(name="coffee", price=300, quantity=1)
 
@@ -105,6 +114,20 @@ Command: "Change milk price to 4 dollars"
 Step 1: get_current_receipt() → find milk's ID
 Step 2: update_receipt_item(id="<ID of milk>", price=400)
 
+Splitting Costs:
+Command: "Split coffee with Alice for 2 dollars"
+Step 1: get_current_receipt() → find coffee's ID
+Step 2: add_split(itemId="<ID of coffee>", person="Alice", amount=200)
+
+Command: "Split pizza evenly between Bob and Charlie"
+Step 1: get_current_receipt() → find pizza's ID
+Step 2: add_proportional_split(itemId="<ID of pizza>", person="Bob", shares=1, totalShares=2)
+Step 3: add_proportional_split(itemId="<ID of pizza>", person="Charlie", shares=1, totalShares=2)
+
+Command: "Give Alice one third of the salad"
+Step 1: get_current_receipt() → find salad's ID
+Step 2: add_proportional_split(itemId="<ID of salad>", person="Alice", shares=1, totalShares=3)
+
 Remember: Use get_current_receipt to see edits. ONE tool call per command. Prices in cents.`;
 
 		// Handle tool calls
@@ -116,18 +139,40 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 				const functionResponses = functionCalls.map((fc) => {
 					try {
 						let args = fc.args || {};
+
+						// Handle receipt item tools
 						if (fc.name === "add_receipt_item" && !args.id) {
 							args = { ...args, id: crypto.randomUUID() };
 						}
 
-						const localToolCall: ToolCall = {
-							id: fc.id || crypto.randomUUID(),
-							timestamp: Date.now(),
-							functionName: fc.name || "",
-							args,
-						};
-
-						addToolCall(localToolCall);
+						// Handle split tools
+						if (fc.name === "add_split") {
+							addSplit({
+								itemId: args.itemId as string,
+								person: args.person as string,
+								type: "absolute",
+								amount: args.amount as number,
+							});
+						} else if (fc.name === "add_proportional_split") {
+							addSplit({
+								itemId: args.itemId as string,
+								person: args.person as string,
+								type: "proportional",
+								shares: args.shares as number,
+								totalShares: args.totalShares as number,
+							});
+						} else if (fc.name === "remove_split") {
+							removeSplit(args.id as string);
+						} else {
+							// Handle receipt item edits
+							const localToolCall: ToolCall = {
+								id: fc.id || crypto.randomUUID(),
+								timestamp: Date.now(),
+								functionName: fc.name || "",
+								args,
+							};
+							addToolCall(localToolCall);
+						}
 
 						return {
 							id: fc.id,
@@ -268,7 +313,7 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 			}
 			workletNodeRef.current = null;
 		};
-	}, [receipt, client, addToolCall]);
+	}, [receipt, client, addToolCall, addSplit, removeSplit]);
 
 	return {
 		connected,

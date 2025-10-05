@@ -23,3 +23,13 @@ export interface AbsoluteSplit {
 	user: string;
 	amount: number;
 }
+
+export interface ItemSplit {
+	id: string;
+	itemId: string;
+	person: string;
+	type: "absolute" | "proportional";
+	amount?: number; // For absolute splits (in cents)
+	shares?: number; // For proportional splits
+	totalShares?: number; // For proportional splits
+}
