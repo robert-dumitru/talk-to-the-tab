@@ -13,6 +13,7 @@ interface ReceiptStore {
 	imageData: string | null;
 	editHistory: ToolCall[];
 	splitHistory: ToolCall[];
+	microphoneEnabled: boolean;
 
 	setReceipt: (receipt: Receipt) => void;
 	setImageData: (imageData: string) => void;
@@ -24,6 +25,7 @@ interface ReceiptStore {
 	updateSplit: (id: string, changes: Partial<Omit<ItemSplit, "id">>) => void;
 	reset: () => void;
 	addToolCall: (toolCall: ToolCall) => void;
+	setMicrophoneEnabled: (enabled: boolean) => void;
 }
 
 export const useReceiptStore = create<ReceiptStore>((set) => ({
@@ -31,6 +33,7 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
 	imageData: null,
 	editHistory: [],
 	splitHistory: [],
+	microphoneEnabled: true,
 
 	setReceipt: (receipt: Receipt) =>
 		set({
@@ -160,4 +163,9 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
 		set((state) => ({
 			editHistory: [...state.editHistory, toolCall],
 		})),
+
+	setMicrophoneEnabled: (enabled: boolean) =>
+		set({
+			microphoneEnabled: enabled,
+		}),
 }));

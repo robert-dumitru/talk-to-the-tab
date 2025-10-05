@@ -32,6 +32,7 @@ registerProcessor('microphone-processor', MicrophoneProcessor);
 
 export interface UseReceiptVoiceControlResult {
 	connected: boolean;
+	isEnabled: boolean;
 }
 
 /**
@@ -44,6 +45,7 @@ export function useReceiptVoiceControl(
 	const addToolCall = useReceiptStore((state) => state.addToolCall);
 	const addSplit = useReceiptStore((state) => state.addSplit);
 	const removeSplit = useReceiptStore((state) => state.removeSplit);
+	const microphoneEnabled = useReceiptStore((state) => state.microphoneEnabled);
 
 	// Create client once
 	const client = useMemo(
@@ -61,7 +63,10 @@ export function useReceiptVoiceControl(
 
 	// Setup and manage the entire voice control lifecycle
 	useEffect(() => {
-		if (!receipt) return;
+		if (!receipt || !microphoneEnabled) {
+			setConnected(false);
+			return;
+		}
 
 		let isActive = true;
 
@@ -313,9 +318,10 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 			}
 			workletNodeRef.current = null;
 		};
-	}, [receipt, client, addToolCall, addSplit, removeSplit]);
+	}, [receipt, microphoneEnabled, client, addToolCall, addSplit, removeSplit]);
 
 	return {
 		connected,
+		isEnabled: microphoneEnabled,
 	};
 }

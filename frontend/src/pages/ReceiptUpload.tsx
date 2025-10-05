@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { Header } from "@/components/ui/header";
 import { useReceiptStore } from "@/stores/receiptStore";
 
 export default function ReceiptUpload() {
@@ -97,9 +98,9 @@ export default function ReceiptUpload() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gray-50 p-4">
-			<div className="max-w-4xl mx-auto">
-				<h1 className="text-3xl font-bold mb-8 text-center">Upload Receipt</h1>
+		<div className="min-h-screen bg-gray-50">
+			<Header microphoneConnected={false} />
+			<div className="max-w-4xl mx-auto p-4 pt-8">
 
 				{!image ? (
 					<Container>

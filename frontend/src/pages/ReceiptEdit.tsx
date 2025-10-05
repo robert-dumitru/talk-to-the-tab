@@ -1,4 +1,5 @@
 import { Receipt } from "@/components/ui/receipt";
+import { Header } from "@/components/ui/header";
 import { useReceiptStore } from "@/stores/receiptStore";
 import { useReceiptVoiceControl } from "@/hooks/use-receipt-voice-control";
 
@@ -20,20 +21,9 @@ export default function ReceiptEdit() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gray-50 p-4">
-			<div className="max-w-6xl mx-auto">
-				<div className="flex items-center justify-center gap-4 mb-6">
-					<h1 className="text-3xl font-bold">Edit Receipt</h1>
-					<div
-						className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-							connected
-								? "bg-green-100 text-green-700"
-								: "bg-gray-100 text-gray-500"
-						}`}
-					>
-						{connected ? "🎤 Listening" : "Connecting..."}
-					</div>
-				</div>
+		<div className="min-h-screen bg-gray-50">
+			<Header microphoneConnected={connected} />
+			<div className="p-4">
 				<Receipt />
 			</div>
 		</div>

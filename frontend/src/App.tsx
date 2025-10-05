@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route } from "react-router";
 import "@/App.css";
 import Login from "@/pages/Login";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import ReceiptList from "@/pages/ReceiptList";
 import ReceiptUpload from "@/pages/ReceiptUpload";
 import ReceiptEdit from "@/pages/ReceiptEdit";
 
@@ -44,14 +43,6 @@ function App() {
 				/>
 				<Route
 					path="/"
-					element={
-						<ProtectedRoute user={user}>
-							<ReceiptList />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
-					path="/upload"
 					element={
 						<ProtectedRoute user={user}>
 							<ReceiptUpload />
