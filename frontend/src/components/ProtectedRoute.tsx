@@ -1,14 +1,14 @@
 import { Navigate } from "react-router";
+import { useAppStore } from "@/stores/appStore";
 
 interface ProtectedRouteProps {
-	user: { name: string; email: string; picture: string } | null;
 	children: React.ReactNode;
 }
 
 export default function ProtectedRoute({
-	user,
 	children,
 }: ProtectedRouteProps) {
+	const user = useAppStore((state) => state.user);
 	if (!user) {
 		return <Navigate to="/login" replace />;
 	}

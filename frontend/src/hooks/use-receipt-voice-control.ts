@@ -6,6 +6,7 @@ import { FunctionResponseScheduling } from "@google/genai";
 import { useReceiptStore } from "@/stores/receiptStore";
 import type { ToolCall } from "@/stores/receiptStore";
 import { receiptTools } from "@/lib/tools/receiptTools";
+import { useAppStore } from "@/stores/appStore";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
 const SAMPLE_RATE = 16000;
@@ -45,7 +46,7 @@ export function useReceiptVoiceControl(
 	const addToolCall = useReceiptStore((state) => state.addToolCall);
 	const addSplit = useReceiptStore((state) => state.addSplit);
 	const removeSplit = useReceiptStore((state) => state.removeSplit);
-	const microphoneEnabled = useReceiptStore((state) => state.microphoneEnabled);
+	const microphoneEnabled = useAppStore((state) => state.microphoneEnabled);
 
 	// Create client once
 	const client = useMemo(

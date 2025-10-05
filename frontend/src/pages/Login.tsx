@@ -1,13 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Container } from "@/components/ui/container";
+import { useAppStore } from "@/stores/appStore";
 
-interface LoginProps {
-	user: { name: string; email: string; picture: string } | null;
-	onLogin: (userData: { name: string; email: string; picture: string }) => void;
-}
-
-export default function Login({ user, onLogin }: LoginProps) {
+export default function Login() {
+	const user = useAppStore((state) => state.user);
+	const setUser = useAppStore((state) => state.setUser);
 	const buttonRef = useRef<HTMLDivElement>(null);
 	const navigate = useNavigate();
 
@@ -63,7 +61,7 @@ export default function Login({ user, onLogin }: LoginProps) {
 			}
 
 			const data = await res.json();
-			onLogin(data.user);
+			setUser(data.user);
 		} catch (error) {
 			console.error("Authentication error:", error);
 			alert("Failed to authenticate with Google");

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router";
 import { useReceiptStore } from "@/stores/receiptStore";
+import { useAppStore } from "@/stores/appStore";
 
 interface HeaderProps {
 	microphoneConnected: boolean;
@@ -8,10 +9,8 @@ interface HeaderProps {
 export function Header({ microphoneConnected }: HeaderProps) {
 	const navigate = useNavigate();
 	const initialReceipt = useReceiptStore((state) => state.initialReceipt);
-	const microphoneEnabled = useReceiptStore((state) => state.microphoneEnabled);
-	const setMicrophoneEnabled = useReceiptStore(
-		(state) => state.setMicrophoneEnabled,
-	);
+	const microphoneEnabled = useAppStore((state) => state.microphoneEnabled);
+	const setMicrophoneEnabled = useAppStore((state) => state.setMicrophoneEnabled);
 	const reset = useReceiptStore((state) => state.reset);
 
 	const handleReset = () => {
@@ -23,15 +22,12 @@ export function Header({ microphoneConnected }: HeaderProps) {
 		setMicrophoneEnabled(!microphoneEnabled);
 	};
 
-	const hasMicrophone = initialReceipt !== null;
-
 	return (
 		<header className="border-b border-slate-200 bg-white">
 			<div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
 				<h1 className="text-lg font-light text-slate-900">Receipt Split</h1>
 
 				<div className="flex items-center gap-3">
-					{hasMicrophone && (
 						<button
 							onClick={toggleMicrophone}
 							className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all border ${
@@ -48,7 +44,6 @@ export function Header({ microphoneConnected }: HeaderProps) {
 									? "🎤 Connecting..."
 									: "🎤 Off"}
 						</button>
-					)}
 
 					{initialReceipt && (
 						<button

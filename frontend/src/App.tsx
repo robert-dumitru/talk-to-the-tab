@@ -1,19 +1,15 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
 import "@/App.css";
 import Login from "@/pages/Login";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ReceiptUpload from "@/pages/ReceiptUpload";
 import ReceiptEdit from "@/pages/ReceiptEdit";
-
-interface UserData {
-	name: string;
-	email: string;
-	picture: string;
-}
+import { useAppStore } from "@/stores/appStore";
 
 function App() {
-	const [user, setUser] = useState<UserData | null>(null);
+	// This initializes the auth state on reload
+	const setUser = useAppStore((state) => state.setUser);
 
 	useEffect(() => {
 		const checkAuth = async () => {
@@ -32,19 +28,19 @@ function App() {
 		};
 
 		checkAuth();
-	}, []);
+	}, [setUser]);
 
 	return (
 		<BrowserRouter>
 			<Routes>
 				<Route
 					path="/login"
-					element={<Login user={user} onLogin={setUser} />}
+					element={<Login />}
 				/>
 				<Route
 					path="/"
 					element={
-						<ProtectedRoute user={user}>
+						<ProtectedRoute>
 							<ReceiptUpload />
 						</ProtectedRoute>
 					}
@@ -52,7 +48,7 @@ function App() {
 				<Route
 					path="/edit"
 					element={
-						<ProtectedRoute user={user}>
+						<ProtectedRoute>
 							<ReceiptEdit />
 						</ProtectedRoute>
 					}
