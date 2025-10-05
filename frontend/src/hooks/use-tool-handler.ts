@@ -25,13 +25,11 @@ export function useToolHandler(client: GenAILiveClient | null) {
 				// Process each function call
 				const functionResponses = functionCalls.map((fc) => {
 					try {
-						// For add_receipt_item, ensure the args include an ID
 						let args = fc.args || {};
 						if (fc.name === "add_receipt_item" && !args.id) {
 							args = { ...args, id: crypto.randomUUID() };
 						}
 
-						// Convert to our ToolCall format and add to store
 						const localToolCall: ToolCall = {
 							id: fc.id || crypto.randomUUID(),
 							timestamp: Date.now(),
@@ -41,7 +39,6 @@ export function useToolHandler(client: GenAILiveClient | null) {
 
 						addToolCall(localToolCall);
 
-						// Return success response
 						return {
 							id: fc.id,
 							name: fc.name,
@@ -65,7 +62,6 @@ export function useToolHandler(client: GenAILiveClient | null) {
 					}
 				});
 
-				// Send responses back to the API
 				if (functionResponses.length > 0) {
 					client.sendToolResponse({ functionResponses });
 				}
