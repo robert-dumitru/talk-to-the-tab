@@ -15,7 +15,7 @@ interface ReceiptStore {
 	splitHistory: ToolCall[];
 
 	setReceipt: (receipt: Receipt) => void;
-	setImageData: (imageData: string) => void;
+	setImageData: (imageData: string | null) => void;
 	addItem: (item: Omit<ReceiptItem, "id">) => void;
 	removeItem: (id: string) => void;
 	updateItem: (id: string, changes: Partial<Omit<ReceiptItem, "id">>) => void;
@@ -39,7 +39,7 @@ export const useReceiptStore = create<ReceiptStore>((set) => ({
 			splitHistory: [],
 		}),
 
-	setImageData: (imageData: string) =>
+	setImageData: (imageData: string | null) =>
 		set({
 			imageData,
 		}),

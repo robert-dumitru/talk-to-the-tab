@@ -6,12 +6,12 @@ import { Header } from "@/components/ui/header";
 import { useReceiptStore } from "@/stores/receiptStore";
 
 export default function ReceiptUpload() {
-	const [image, setImage] = useState<string | null>(null);
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const navigate = useNavigate();
 	const setReceipt = useReceiptStore((state) => state.setReceipt);
+	const imageData = useReceiptStore((state) => state.imageData);
 	const setImageData = useReceiptStore((state) => state.setImageData);
 
 	const compressImage = (file: File): Promise<string> => {
@@ -59,11 +59,11 @@ export default function ReceiptUpload() {
 		if (!file) return;
 
 		const compressed = await compressImage(file);
-		setImage(compressed);
+		setImageData(compressed);
 	};
 
 	const handleContinue = async () => {
-		if (!image) return;
+		if (!imageData) return;
 
 		setIsProcessing(true);
 		setError(null);
@@ -75,7 +75,7 @@ export default function ReceiptUpload() {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ image }),
+				body: JSON.stringify({ image: imageData }),
 			});
 
 			if (!response.ok) {
@@ -85,9 +85,8 @@ export default function ReceiptUpload() {
 
 			const receipt = await response.json();
 
-			// Store receipt and image in the store
+			// Store receipt in the store (image already stored)
 			setReceipt(receipt);
-			setImageData(image);
 
 			// Navigate to edit page
 			navigate("/edit");
@@ -99,10 +98,10 @@ export default function ReceiptUpload() {
 
 	return (
 		<div className="min-h-screen bg-gray-50">
-			<Header microphoneConnected={false} />
+			<Header />
 			<div className="max-w-4xl mx-auto p-4 pt-8">
 
-				{!image ? (
+				{!imageData ? (
 					<Container>
 						<div className="flex flex-col items-center">
 							<input
@@ -125,7 +124,7 @@ export default function ReceiptUpload() {
 				) : (
 					<div className="bg-white shadow-lg rounded-lg p-4">
 						<img
-							src={image}
+							src={imageData}
 							alt="Receipt preview"
 							className="w-full rounded-lg mb-4"
 						/>
@@ -138,7 +137,7 @@ export default function ReceiptUpload() {
 
 						<div className="flex flex-row gap-3 w-full">
 							<div className="flex-1" />
-							<Button onClick={() => setImage(null)} disabled={isProcessing}>
+							<Button onClick={() => setImageData(null)} disabled={isProcessing}>
 								Retake
 							</Button>
 							<Button onClick={handleContinue} disabled={isProcessing}>
