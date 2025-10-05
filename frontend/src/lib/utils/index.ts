@@ -6,3 +6,13 @@ export function base64ToArrayBuffer(base64: string) {
 	}
 	return bytes.buffer;
 }
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+
+export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
+	return fetch(`${BACKEND_URL}${path}`, {
+		...options,
+		credentials: "include",
+	});
+}
+

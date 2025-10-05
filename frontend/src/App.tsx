@@ -6,6 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ReceiptUpload from "@/pages/ReceiptUpload";
 import ReceiptEdit from "@/pages/ReceiptEdit";
 import { useAppStore } from "@/stores/appStore";
+import { apiFetch } from "@/lib/utils";
 
 function App() {
 	// This initializes the auth state on reload
@@ -14,9 +15,7 @@ function App() {
 	useEffect(() => {
 		const checkAuth = async () => {
 			try {
-				const res = await fetch("http://localhost:8000/auth/me", {
-					credentials: "include",
-				});
+				const res = await apiFetch("/auth/me");
 
 				if (res.ok) {
 					const data = await res.json();

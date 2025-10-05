@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Container } from "@/components/ui/container";
 import { useAppStore } from "@/stores/appStore";
+import { apiFetch } from "@/lib/utils";
 
 export default function Login() {
 	const user = useAppStore((state) => state.user);
@@ -20,8 +21,7 @@ export default function Login() {
 			if (!window.google) return;
 
 			window.google.accounts.id.initialize({
-				client_id:
-					"406580829140-uj1esijhuvjruakt65bvcjlsfm0256pl.apps.googleusercontent.com",
+				client_id: import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID,
 				callback: handleCredentialResponse,
 			});
 
@@ -49,10 +49,9 @@ export default function Login() {
 
 	const handleCredentialResponse = async (response: { credential: string }) => {
 		try {
-			const res = await fetch("http://localhost:8000/auth/google", {
+			const res = await apiFetch("/auth/google", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				credentials: "include",
 				body: JSON.stringify({ token: response.credential }),
 			});
 

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Header } from "@/components/ui/header";
 import { useReceiptStore } from "@/stores/receiptStore";
+import { apiFetch } from "@/lib/utils";
 
 export default function ReceiptUpload() {
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -69,9 +70,8 @@ export default function ReceiptUpload() {
 		setError(null);
 
 		try {
-			const response = await fetch("http://localhost:8000/ai/ocr", {
+			const response = await apiFetch("/ai/ocr", {
 				method: "POST",
-				credentials: "include",
 				headers: {
 					"Content-Type": "application/json",
 				},

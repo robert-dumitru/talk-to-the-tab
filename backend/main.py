@@ -15,27 +15,33 @@ load_dotenv()
 
 app = FastAPI()
 
-# CORS configuration - adjust origins for production
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+allowed_origins = [origin.strip() for origin in allowed_origins]
+
+IS_PROD = len([origin for origin in allowed_origins if origin != "http://localhost:5173"]) > 0
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite default port
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-GOOGLE_CLIENT_ID = "406580829140-uj1esijhuvjruakt65bvcjlsfm0256pl.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+if not GOOGLE_CLIENT_ID:
+    raise Exception("GOOGLE_OAUTH_CLIENT_ID not set in environment")
 
 class GoogleTokenRequest(BaseModel):
     token: str
 
 class OCRRequest(BaseModel):
-    image: str  # base64 encoded image data
+    image: str
 
 class ReceiptItem(BaseModel):
     id: str
     name: str
-    price: int  # price in cents
+    price: int # price in cents
     taxed: bool
 
 class ReceiptItemRaw(BaseModel):
@@ -49,26 +55,23 @@ class ReceiptItemsRaw(BaseModel):
 class OCRResponse(BaseModel):
     items: list[ReceiptItem]
 
-# In-memory session store (use Redis or database in production)
+# TODO: this should be in the DB (but it's not too bad here because most stuff happens client-side)
 sessions = {}
 
 @app.post("/auth/google")
 async def verify_google_token(request: GoogleTokenRequest, response: Response):
     try:
-        # Verify the token with Google
         idinfo = id_token.verify_oauth2_token(
             request.token,
             google_requests.Request(),
             GOOGLE_CLIENT_ID
         )
 
-        # Extract user info
         google_id = idinfo['sub']
         email = idinfo['email']
         name = idinfo.get('name', '')
         picture = idinfo.get('picture', '')
 
-        # Store session data
         sessions[google_id] = {
             "google_id": google_id,
             "email": email,
@@ -76,15 +79,13 @@ async def verify_google_token(request: GoogleTokenRequest, response: Response):
             "picture": picture
         }
 
-        # Set httpOnly cookie with the google_id
-        # In production, use Secure=True and proper domain
         response.set_cookie(
             key="session",
             value=google_id,
             httponly=True,
-            secure=False,  # Set to True in production with HTTPS
+            secure=True if IS_PROD else False,
             samesite="lax",
-            max_age=3600  # 1 hour
+            max_age=3600
         )
 
         return {
@@ -103,7 +104,7 @@ async def get_current_user(session: str = Cookie(None)):
     if not session:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # Look up user in session store
+    # TODO: this lookup should be from the db
     user_data = sessions.get(session)
     if not user_data:
         raise HTTPException(status_code=401, detail="Session expired")
@@ -136,10 +137,8 @@ async def ocr_receipt(request: OCRRequest, session: str = Cookie(None)):
     try:
         client = genai.Client(api_key=api_key)
 
-        # Remove data URL prefix if present
+        # Decode base64 image
         image_data = request.image.split(",")[1] if "," in request.image else request.image
-
-        # Decode base64 string to bytes
         image_bytes = base64.b64decode(image_data)
 
         prompt = """
@@ -167,12 +166,10 @@ async def ocr_receipt(request: OCRRequest, session: str = Cookie(None)):
             ),
         )
 
-        # Parse and validate response with Pydantic
         if not response.text:
             raise HTTPException(status_code=500, detail="Empty response from OCR")
         parsed_data = ReceiptItemsRaw.model_validate_json(response.text)
 
-        # Add IDs to items
         items_with_ids = [
             ReceiptItem(
                 id=secrets.token_hex(4),
@@ -196,11 +193,11 @@ async def get_ephemeral_key(session: str = Cookie(None)):
     if not session:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    # TODO: this lookup should be from the db
     user_data = sessions.get(session)
     if not user_data:
         raise HTTPException(status_code=401, detail="Session expired")
 
-    # Get API key from environment
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="Gemini API key not configured")
@@ -210,17 +207,15 @@ async def get_ephemeral_key(session: str = Cookie(None)):
 
         client = genai.Client(api_key=api_key)
 
-        # Calculate expiration times
         now = datetime.now(timezone.utc)
         expire_time = now + timedelta(minutes=30)
         new_session_expire_time = now + timedelta(minutes=1)
 
-        # Create ephemeral token
         token_response = client.auth_tokens.create(
             config=types.CreateAuthTokenConfig(
                 expire_time=expire_time,
                 new_session_expire_time=new_session_expire_time,
-                uses=1,  # Single use token
+                uses=1, 
                 http_options=types.HttpOptions(
                     api_version="v1alpha",
                 )
