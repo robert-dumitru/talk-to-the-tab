@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GenAILiveClient } from "@/lib/genai/live-client";
 import type { Receipt } from "@/types/receipt";
 import type { LiveServerToolCall } from "@google/genai";
@@ -6,10 +6,21 @@ import { FunctionResponseScheduling } from "@google/genai";
 import { useReceiptStore } from "@/stores/receiptStore";
 import type { ToolCall } from "@/stores/receiptStore";
 import { receiptTools } from "@/lib/tools/receiptTools";
-import { useAppStore } from "@/stores/appStore";
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
 const SAMPLE_RATE = 16000;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+
+// Fetch ephemeral token from backend
+async function fetchEphemeralToken(): Promise<string> {
+	const response = await fetch(`${BACKEND_URL}/ai/get-ephemeral-key`, {
+		credentials: "include",
+	});
+	if (!response.ok) {
+		throw new Error("Failed to fetch ephemeral token");
+	}
+	const data = await response.json();
+	return data.token;
+}
 
 // AudioWorklet processor for microphone input
 const MicrophoneWorklet = `
@@ -34,6 +45,7 @@ registerProcessor('microphone-processor', MicrophoneProcessor);
 export interface UseReceiptVoiceControlResult {
 	connected: boolean;
 	isEnabled: boolean;
+	toggleMicrophone: () => void;
 }
 
 /**
@@ -46,16 +58,15 @@ export function useReceiptVoiceControl(
 	const addToolCall = useReceiptStore((state) => state.addToolCall);
 	const addSplit = useReceiptStore((state) => state.addSplit);
 	const removeSplit = useReceiptStore((state) => state.removeSplit);
-	const microphoneEnabled = useAppStore((state) => state.microphoneEnabled);
 
-	// Create client once
-	const client = useMemo(
-		() => new GenAILiveClient({ apiKey: API_KEY }),
-		[],
-	);
+	// Track microphone state locally
+	const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
 
 	// Track connection state
 	const [connected, setConnected] = useState(false);
+
+	// Client ref (will be initialized with ephemeral token)
+	const clientRef = useRef<GenAILiveClient | null>(null);
 
 	// Track audio resources
 	const streamRef = useRef<MediaStream | null>(null);
@@ -70,6 +81,20 @@ export function useReceiptVoiceControl(
 		}
 
 		let isActive = true;
+
+		async function initializeClient() {
+			try {
+				// Fetch ephemeral token from backend
+				const token = await fetchEphemeralToken();
+
+				if (!isActive) return;
+
+				// Create client with ephemeral token
+				clientRef.current = new GenAILiveClient({ apiKey: token, httpOptions: { apiVersion: 'v1alpha' } });
+			} catch (error) {
+				console.error("Failed to initialize client:", error);
+			}
+		}
 
 		// Build system instruction from receipt
 		const receiptContext = receipt.items
@@ -202,8 +227,8 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 					}
 				});
 
-				if (functionResponses.length > 0) {
-					client.sendToolResponse({ functionResponses });
+				if (functionResponses.length > 0 && clientRef.current) {
+					clientRef.current.sendToolResponse({ functionResponses });
 				}
 			} catch (error) {
 				console.error("Error handling tool call:", error);
@@ -257,8 +282,8 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 					}
 					const base64 = btoa(binary);
 
-					if (client && isActive) {
-						client.sendRealtimeInput([
+					if (clientRef.current && isActive) {
+						clientRef.current.sendRealtimeInput([
 							{
 								mimeType: "audio/pcm;rate=16000",
 								data: base64,
@@ -277,6 +302,13 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 		// Connect to Live API
 		async function connectToLiveAPI() {
 			try {
+				// Initialize client first
+				await initializeClient();
+
+				if (!clientRef.current || !isActive) return;
+
+				const client = clientRef.current;
+
 				client.on("toolcall", handleToolCall);
 				client.on("open", () => {
 					setConnected(true);
@@ -306,8 +338,10 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 			isActive = false;
 			setConnected(false);
 
-			client.off("toolcall", handleToolCall);
-			client.disconnect();
+			if (clientRef.current) {
+				clientRef.current.off("toolcall", handleToolCall);
+				clientRef.current.disconnect();
+			}
 
 			if (streamRef.current) {
 				streamRef.current.getTracks().forEach((track) => track.stop());
@@ -319,10 +353,15 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 			}
 			workletNodeRef.current = null;
 		};
-	}, [receipt, microphoneEnabled, client, addToolCall, addSplit, removeSplit]);
+	}, [receipt, microphoneEnabled, addToolCall, addSplit, removeSplit]);
+
+	const toggleMicrophone = () => {
+		setMicrophoneEnabled((prev) => !prev);
+	};
 
 	return {
 		connected,
 		isEnabled: microphoneEnabled,
+		toggleMicrophone,
 	};
 }
