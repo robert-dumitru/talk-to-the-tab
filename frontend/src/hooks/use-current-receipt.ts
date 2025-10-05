@@ -23,7 +23,8 @@ export interface SplitSummary {
 function applyEdit(receipt: Receipt, toolCall: ToolCall): Receipt {
 	switch (toolCall.functionName) {
 		case "add_receipt_item": {
-			const item = toolCall.args as ReceiptItem;
+			// TODO: zod validation here
+			const item = toolCall.args as unknown as ReceiptItem;
 			return {
 				...receipt,
 				items: [...receipt.items, item],
@@ -58,7 +59,8 @@ function applyEdit(receipt: Receipt, toolCall: ToolCall): Receipt {
 function applySplit(splits: ItemSplit[], toolCall: ToolCall): ItemSplit[] {
 	switch (toolCall.functionName) {
 		case "add_split": {
-			const split = toolCall.args as ItemSplit;
+			// TODO: zod validation here
+			const split = toolCall.args as unknown as ItemSplit;
 			return [...splits, split];
 		}
 		case "remove_split": {
