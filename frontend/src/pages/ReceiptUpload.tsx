@@ -2,11 +2,16 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { useReceiptStore } from "@/stores/receiptStore";
 
 export default function ReceiptUpload() {
 	const [image, setImage] = useState<string | null>(null);
+	const [isProcessing, setIsProcessing] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const navigate = useNavigate();
+	const setReceipt = useReceiptStore((state) => state.setReceipt);
+	const setImageData = useReceiptStore((state) => state.setImageData);
 
 	const compressImage = (file: File): Promise<string> => {
 		return new Promise((resolve) => {
@@ -56,11 +61,39 @@ export default function ReceiptUpload() {
 		setImage(compressed);
 	};
 
-	const handleContinue = () => {
+	const handleContinue = async () => {
 		if (!image) return;
-		const receiptId = Date.now().toString();
-		sessionStorage.setItem(`receipt_image_${receiptId}`, image);
-		navigate(`/edit/${receiptId}`);
+
+		setIsProcessing(true);
+		setError(null);
+
+		try {
+			const response = await fetch("http://localhost:8000/ai/ocr", {
+				method: "POST",
+				credentials: "include",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ image }),
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.detail || "OCR processing failed");
+			}
+
+			const receipt = await response.json();
+
+			// Store receipt and image in the store
+			setReceipt(receipt);
+			setImageData(image);
+
+			// Navigate to edit page
+			navigate("/edit");
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to process image");
+			setIsProcessing(false);
+		}
 	};
 
 	return (
@@ -96,10 +129,20 @@ export default function ReceiptUpload() {
 							className="w-full rounded-lg mb-4"
 						/>
 
+						{error && (
+							<div className="text-red-600 text-sm mb-4 text-center">
+								{error}
+							</div>
+						)}
+
 						<div className="flex flex-row gap-3 w-full">
 							<div className="flex-1" />
-							<Button onClick={() => setImage(null)}>Retake</Button>
-							<Button onClick={handleContinue}>Continue</Button>
+							<Button onClick={() => setImage(null)} disabled={isProcessing}>
+								Retake
+							</Button>
+							<Button onClick={handleContinue} disabled={isProcessing}>
+								{isProcessing ? "Processing..." : "Continue"}
+							</Button>
 						</div>
 					</div>
 				)}
