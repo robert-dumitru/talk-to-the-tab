@@ -1,14 +1,12 @@
 import { Receipt } from "@/components/ui/receipt";
 import { useReceiptStore } from "@/stores/receiptStore";
 import { useReceiptVoiceControl } from "@/hooks/use-receipt-voice-control";
-import { useCurrentReceipt } from "@/hooks/use-current-receipt";
 
 export default function ReceiptEdit() {
 	const initialReceipt = useReceiptStore((state) => state.initialReceipt);
-	const currentReceipt = useCurrentReceipt();
 
-	// Set up voice control with current receipt
-	const { connected } = useReceiptVoiceControl(currentReceipt);
+	// Set up voice control with initial receipt (stays stable across edits)
+	const { connected } = useReceiptVoiceControl(initialReceipt);
 
 	if (!initialReceipt) {
 		return (

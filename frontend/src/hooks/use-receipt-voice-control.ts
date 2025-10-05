@@ -234,7 +234,7 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 					setConnected(false);
 				});
 
-				await client.connect("models/gemini-2.0-flash-exp", {
+				await client.connect("gemini-live-2.5-flash-preview", {
 					tools: receiptTools,
 					systemInstruction: { parts: [{ text: systemInstruction }] },
 				});
