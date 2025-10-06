@@ -1,22 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { GenAILiveClient } from "@/lib/genai/live-client";
-import type { Receipt, ItemSplit } from "@/types/receipt";
+import type { Receipt } from "@/types/receipt";
 import type { LiveServerToolCall } from "@google/genai";
-import { FunctionResponseScheduling } from "@google/genai";
 import { useReceiptStore } from "@/stores/receiptStore";
 import type { ToolCall } from "@/stores/receiptStore";
 import { receiptTools } from "@/lib/tools/receiptTools";
 import { useCurrentReceipt } from "@/hooks/use-current-receipt";
 import type { SplitSummary } from "@/hooks/use-current-receipt";
+import { apiFetch } from "@/lib/utils";
+
+// A lot of the code here is adapted from the GenAI webapp example: https://github.com/google-gemini/live-api-web-console/blob/main/src/hooks/use-live-api.ts
 
 const SAMPLE_RATE = 16000;
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+const MODEL = "gemini-live-2.5-flash-preview"; // I've tried 09-2025, but for some reason it doesn't play well with this setup
 
-// Fetch ephemeral token from backend
 async function fetchEphemeralToken(): Promise<string> {
-	const response = await fetch(`${BACKEND_URL}/ai/get-ephemeral-key`, {
-		credentials: "include",
-	});
+	const response = await apiFetch("/ai/get-ephemeral-key");
 	if (!response.ok) {
 		throw new Error("Failed to fetch ephemeral token");
 	}
@@ -50,10 +49,10 @@ export interface UseReceiptVoiceControlResult {
 	toggleMicrophone: () => void;
 }
 
-/**
- * Unified hook for voice-controlled receipt editing.
- * Manages GenAI Live API client, microphone input, and tool call handling.
- */
+/*
+This hook more or less manages the entire AI agent. It's big and ugly, but it works and I'm afraid to touch it
+TODO: Maybe move this over to the server? I'm not sure how much benefit I'm getting out of a live model
+*/
 export function useReceiptVoiceControl(
 	receipt: Receipt | null,
 ): UseReceiptVoiceControlResult {
@@ -61,32 +60,22 @@ export function useReceiptVoiceControl(
 	const addSplit = useReceiptStore((state) => state.addSplit);
 	const removeSplit = useReceiptStore((state) => state.removeSplit);
 
-	// Get current receipt state (with all edits applied)
 	const { receipt: currentReceipt, splitSummary } = useCurrentReceipt();
-
-	// Store current state in ref so handleToolCall always has latest values
-	// without causing the effect to re-run on every edit
 	const currentStateRef = useRef<{ receipt: Receipt | null; splitSummary: SplitSummary | null }>({
 		receipt: currentReceipt,
 		splitSummary,
 	});
 	currentStateRef.current = { receipt: currentReceipt, splitSummary };
 
-	// Track microphone state locally
 	const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
-
-	// Track connection state
 	const [connected, setConnected] = useState(false);
 
-	// Client ref (will be initialized with ephemeral token)
 	const clientRef = useRef<GenAILiveClient | null>(null);
 
-	// Track audio resources
 	const streamRef = useRef<MediaStream | null>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
 	const workletNodeRef = useRef<AudioWorkletNode | null>(null);
 
-	// Setup and manage the entire voice control lifecycle
 	useEffect(() => {
 		if (!receipt || !microphoneEnabled) {
 			setConnected(false);
@@ -117,68 +106,66 @@ export function useReceiptVoiceControl(
 			)
 			.join("\n");
 
-		const systemInstruction = `You are a voice-controlled receipt editor with cost-splitting. Listen to commands and call the appropriate tools to satisfy each request.
+		const systemInstruction = `
+			You are a voice-controlled receipt editor with cost-splitting. Listen to commands and call the appropriate tools to satisfy each request.
+			INITIAL RECEIPT (before any edits):
+			${receiptContext}
 
-INITIAL RECEIPT (before any edits):
-${receiptContext}
+			RULES:
+			1. ONLY respond with tool calls - no text or audio output. Make tool calls as soon as a command is complete, and keep listening.
+			2. The receipt shown above is just the STARTING point - use get_current_receipt to see the current state with all edits applied
+			3. You can make MULTIPLE tool calls to satisfy a single user request (e.g., get_current_receipt to find an ID, then remove_receipt_item to delete it)
+			4. Prices are in CENTS (e.g., $3.50 = 350 cents, $1.00 = 100 cents)
+			5. Always call get_current_receipt BEFORE making edits when you need to know item IDs or check current state
+			6. IMPORTANT: After calling get_current_receipt, immediately use the returned IDs to complete the user's original request in your very next tool call
+			7. Do not repeat tool calls - they are shown on the frontend
 
-RULES:
-1. ONLY respond with tool calls - no text or audio output. Make tool calls as soon as a command is complete, and keep listening.
-2. The receipt shown above is just the STARTING point - use get_current_receipt to see the current state with all edits applied
-3. You can make MULTIPLE tool calls to satisfy a single user request (e.g., get_current_receipt to find an ID, then remove_receipt_item to delete it)
-4. Prices are in CENTS (e.g., $3.50 = 350 cents, $1.00 = 100 cents)
-5. Always call get_current_receipt BEFORE making edits when you need to know item IDs or check current state
-6. Do not repeat tool calls - they are shown on the frontend
+			AVAILABLE TOOLS:
+			View State:
+			- get_current_receipt(): Get current receipt items and splits (use before editing when you need IDs)
 
-AVAILABLE TOOLS:
-View State:
-- get_current_receipt(): Get current receipt items and splits (use before editing when you need IDs)
+			Receipt Items:
+			- add_receipt_item(name, price, quantity): Add a new item
+			- remove_receipt_item(id): Remove an item by ID
+			- update_receipt_item(id, name?, price?, quantity?): Update an item
 
-Receipt Items:
-- add_receipt_item(name, price, quantity): Add a new item
-- remove_receipt_item(id): Remove an item by ID
-- update_receipt_item(id, name?, price?, quantity?): Update an item
+			Cost Splitting:
+			- add_split(itemId, person, amount): Split item with absolute dollar amount in cents
+			- add_proportional_split(itemId, person, shares, totalShares): Split item by proportional shares
+			- remove_split(id): Remove a split by ID
 
-Cost Splitting:
-- add_split(itemId, person, amount): Split item with absolute dollar amount in cents
-- add_proportional_split(itemId, person, shares, totalShares): Split item by proportional shares
-- remove_split(id): Remove a split by ID
+			EXAMPLES:
 
-EXAMPLES:
+			Adding Items (single tool call):
+			Command: "Add coffee for 3 dollars"
+			1. add_receipt_item(name="coffee", price=300)
 
-Adding Items (single tool call):
-Command: "Add coffee for 3 dollars"
-→ add_receipt_item(name="coffee", price=300, quantity=1)
+			Removing/Updating Items (multiple tool calls):
+			Command: "Remove the tax item"
+			1. get_current_receipt()
+			2. remove_receipt_item(id="<ID from get_current_receipt>")
 
-Command: "Add two bagels at 2 fifty each"
-→ add_receipt_item(name="bagels", price=250, quantity=2)
+			Command: "Change milk price to 4 dollars"
+			1. get_current_receipt()
+			2. update_receipt_item(id="<ID from get_current_receipt>", price=400)
 
-Removing/Updating Items (multiple tool calls):
-Command: "Remove the tax item"
-→ get_current_receipt()
-→ remove_receipt_item(id="<ID from get_current_receipt>")
+			Splitting Costs (multiple tool calls):
+			Command: "Split coffee with Alice for 2 dollars"
+			1. get_current_receipt()
+			2. add_split(itemId="<ID from get_current_receipt>", person="Alice", amount=200)
 
-Command: "Change milk price to 4 dollars"
-→ get_current_receipt()
-→ update_receipt_item(id="<ID from get_current_receipt>", price=400)
+			Command: "Split pizza evenly between Bob and Charlie"
+			1. get_current_receipt()
+			2. add_proportional_split(itemId="<ID>", person="Bob", shares=1, totalShares=2)
+			3. add_proportional_split(itemId="<ID>", person="Charlie", shares=1, totalShares=2)
 
-Splitting Costs (multiple tool calls):
-Command: "Split coffee with Alice for 2 dollars"
-→ get_current_receipt()
-→ add_split(itemId="<ID from get_current_receipt>", person="Alice", amount=200)
+			Command: "Give Alice one third of the salad"
+			1. get_current_receipt()
+			2. add_proportional_split(itemId="<ID>", person="Alice", shares=1, totalShares=3)
 
-Command: "Split pizza evenly between Bob and Charlie"
-→ get_current_receipt()
-→ add_proportional_split(itemId="<ID>", person="Bob", shares=1, totalShares=2)
-→ add_proportional_split(itemId="<ID>", person="Charlie", shares=1, totalShares=2)
+			Remember: Call get_current_receipt first when you need IDs. You can make multiple tool calls. Prices in cents.
+		`;
 
-Command: "Give Alice one third of the salad"
-→ get_current_receipt()
-→ add_proportional_split(itemId="<ID>", person="Alice", shares=1, totalShares=3)
-
-Remember: Call get_current_receipt first when you need IDs. You can make multiple tool calls. Prices in cents.`;
-
-		// Handle tool calls
 		const handleToolCall = (toolCall: LiveServerToolCall) => {
 			console.log("Received tool call:", toolCall);
 
@@ -188,11 +175,11 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 					try {
 						let args = fc.args || {};
 
-						// Handle get_current_receipt - return current state
 						if (fc.name === "get_current_receipt") {
 							const items = currentStateRef.current.receipt?.items || [];
 							const splits = currentStateRef.current.splitSummary?.splits || [];
 
+							// The model doesn't like raw JSON, so I'm formatting this a bit nicer for it
 							const itemsFormatted = items
 								.map((item) => `${item.name} ($${(item.price / 100).toFixed(2)}) [ID: ${item.id}]`)
 								.join(", ");
@@ -212,17 +199,13 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 								name: fc.name,
 								response: {
 									result: `Current Receipt Items: ${itemsFormatted}. Splits: ${splitsFormatted}`,
-									scheduling: FunctionResponseScheduling.INTERRUPT,
 								},
 							};
 						}
-
-						// Handle receipt item tools
 						if (fc.name === "add_receipt_item" && !args.id) {
 							args = { ...args, id: crypto.randomUUID() };
 						}
 
-						// Handle split tools
 						if (fc.name === "add_split") {
 							addSplit({
 								itemId: args.itemId as string,
@@ -241,7 +224,6 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 						} else if (fc.name === "remove_split") {
 							removeSplit(args.id as string);
 						} else {
-							// Handle receipt item edits
 							const localToolCall: ToolCall = {
 								id: fc.id || crypto.randomUUID(),
 								timestamp: Date.now(),
@@ -256,7 +238,6 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 							name: fc.name,
 							response: {
 								result: "ok",
-								scheduling: FunctionResponseScheduling.SILENT,
 							},
 						};
 					} catch (error) {
@@ -266,7 +247,6 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 							name: fc.name,
 							response: {
 								result: "error",
-								scheduling: FunctionResponseScheduling.SILENT,
 								error: error instanceof Error ? error.message : "Unknown error",
 							},
 						};
@@ -281,7 +261,6 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 			}
 		};
 
-		// Start microphone capture
 		async function startMicrophone() {
 			try {
 				const stream = await navigator.mediaDevices.getUserMedia({
@@ -344,11 +323,8 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 				console.error("Failed to start microphone:", error);
 			}
 		}
-
-		// Connect to Live API
 		async function connectToLiveAPI() {
 			try {
-				// Initialize client first
 				await initializeClient();
 
 				if (!clientRef.current || !isActive) return;
@@ -363,14 +339,12 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 					setConnected(false);
 				});
 
-				await client.connect("gemini-live-2.5-flash-preview", {
+				await client.connect(MODEL, {
 					tools: receiptTools,
 					systemInstruction: { parts: [{ text: systemInstruction }] },
 				});
 
 				console.log("Connected to Gemini Live API with tools");
-
-				// Start microphone after connection
 				await startMicrophone();
 			} catch (error) {
 				console.error("Failed to connect to Live API:", error);
@@ -378,8 +352,6 @@ Remember: Call get_current_receipt first when you need IDs. You can make multipl
 		}
 
 		connectToLiveAPI();
-
-		// Cleanup
 		return () => {
 			isActive = false;
 			setConnected(false);

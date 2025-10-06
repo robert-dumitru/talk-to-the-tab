@@ -63,7 +63,7 @@ export function Receipt({ receipt: receiptProp }: ReceiptProps) {
 	const splits = splitSummary?.splits || [];
 
 	return (
-		<div className="max-w-md mx-auto bg-white shadow-lg p-6 font-mono text-sm h-fit">
+		<div className="max-w-md mx-auto bg-white shadow-lg p-6 font-mono text-sm h-fit w-full">
 			<div className="border-b-2 border-dashed border-gray-400 pb-4 mb-4">
 				<h2 className="text-center text-lg font-bold">RECEIPT</h2>
 			</div>

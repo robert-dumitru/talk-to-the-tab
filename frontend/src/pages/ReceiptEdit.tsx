@@ -23,11 +23,10 @@ export default function ReceiptEdit() {
 	return (
 		<div className="min-h-screen bg-gray-50">
 			<Header />
-			<div className="p-4">
-				<div className="max-w-md mx-auto mb-4">
+			<div className="p-4 flex flex-col items-center gap-4">
 					<button
 						onClick={toggleMicrophone}
-						className={`w-full px-4 py-2 rounded-sm text-sm font-medium transition-all border ${
+						className={`w-full px-4 py-2 rounded-sm text-sm font-medium transition-all border max-w-md cursor-pointer ${
 							isEnabled && connected
 								? "bg-green-50 text-green-700 border-green-200"
 								: isEnabled
@@ -36,12 +35,11 @@ export default function ReceiptEdit() {
 						}`}
 					>
 						{isEnabled && connected
-							? "🎤 Listening"
+							? "Listening"
 							: isEnabled
-								? "🎤 Connecting..."
-								: "🎤 Click to Enable Voice Control"}
+								? "Connecting..."
+								: "Click to Enable Voice Control"}
 					</button>
-				</div>
 				<Receipt />
 			</div>
 		</div>

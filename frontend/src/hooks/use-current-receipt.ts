@@ -97,10 +97,8 @@ function computeSplitSummary(
 	const subtotal = lineItems.reduce((sum, item) => sum + item.price, 0);
 	const grandTotal = subtotal + taxAmount + tipAmount;
 
-	// Calculate per-person totals
 	const personMap = new Map<string, PersonTotal>();
 
-	// Process each split
 	for (const split of splits) {
 		const item = lineItems.find((i) => i.id === split.itemId);
 		if (!item) continue;
@@ -128,7 +126,6 @@ function computeSplitSummary(
 		personTotal.subtotal += splitAmount;
 	}
 
-	// Calculate total split amount and distribute tax/tip proportionally
 	let totalSplitAmount = 0;
 	for (const personTotal of personMap.values()) {
 		totalSplitAmount += personTotal.subtotal;
@@ -154,10 +151,6 @@ function computeSplitSummary(
 	};
 }
 
-/**
- * Hook that computes the current receipt and splits by applying all edits/splits to the initial receipt.
- * Returns null if no initial receipt is set.
- */
 export function useCurrentReceipt(): {
 	receipt: Receipt | null;
 	splitSummary: SplitSummary | null;
