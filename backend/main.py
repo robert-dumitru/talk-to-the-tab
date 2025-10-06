@@ -129,7 +129,6 @@ async def ocr_receipt(request: OCRRequest, session: str = Cookie(None)):
     if not user_data:
         raise HTTPException(status_code=401, detail="Session expired")
 
-    # Get API key from environment
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="Gemini API key not configured")
