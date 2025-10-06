@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { GenAILiveClient } from "@/lib/genai/live-client";
-import type { Receipt } from "@/types/receipt";
+import type { Receipt, ItemSplit } from "@/types/receipt";
 import type { LiveServerToolCall } from "@google/genai";
 import { FunctionResponseScheduling } from "@google/genai";
 import { useReceiptStore } from "@/stores/receiptStore";
 import type { ToolCall } from "@/stores/receiptStore";
 import { receiptTools } from "@/lib/tools/receiptTools";
+import { useCurrentReceipt } from "@/hooks/use-current-receipt";
+import type { SplitSummary } from "@/hooks/use-current-receipt";
 
 const SAMPLE_RATE = 16000;
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
@@ -59,6 +61,17 @@ export function useReceiptVoiceControl(
 	const addSplit = useReceiptStore((state) => state.addSplit);
 	const removeSplit = useReceiptStore((state) => state.removeSplit);
 
+	// Get current receipt state (with all edits applied)
+	const { receipt: currentReceipt, splitSummary } = useCurrentReceipt();
+
+	// Store current state in ref so handleToolCall always has latest values
+	// without causing the effect to re-run on every edit
+	const currentStateRef = useRef<{ receipt: Receipt | null; splitSummary: SplitSummary | null }>({
+		receipt: currentReceipt,
+		splitSummary,
+	});
+	currentStateRef.current = { receipt: currentReceipt, splitSummary };
+
 	// Track microphone state locally
 	const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
 
@@ -104,20 +117,23 @@ export function useReceiptVoiceControl(
 			)
 			.join("\n");
 
-		const systemInstruction = `You are a voice-controlled receipt editor with cost-splitting. Listen to commands and make ONE tool call per command.
+		const systemInstruction = `You are a voice-controlled receipt editor with cost-splitting. Listen to commands and call the appropriate tools to satisfy each request.
 
 INITIAL RECEIPT (before any edits):
 ${receiptContext}
 
 RULES:
-1. ONLY respond with tool calls - no text or audio output. Make a tool call as soon as a command is complete, and keep listening.
-2. The receipt shown above is just the STARTING point - assume all previous edits have been applied
-3. Make exactly ONE tool call per user command, then STOP
+1. ONLY respond with tool calls - no text or audio output. Make tool calls as soon as a command is complete, and keep listening.
+2. The receipt shown above is just the STARTING point - use get_current_receipt to see the current state with all edits applied
+3. You can make MULTIPLE tool calls to satisfy a single user request (e.g., get_current_receipt to find an ID, then remove_receipt_item to delete it)
 4. Prices are in CENTS (e.g., $3.50 = 350 cents, $1.00 = 100 cents)
-5. Use get_current_receipt when you need to check what items exist or their IDs
-6. Do not repeat tool calls - they are shown on the frontend but not in the initial receipt
+5. Always call get_current_receipt BEFORE making edits when you need to know item IDs or check current state
+6. Do not repeat tool calls - they are shown on the frontend
 
 AVAILABLE TOOLS:
+View State:
+- get_current_receipt(): Get current receipt items and splits (use before editing when you need IDs)
+
 Receipt Items:
 - add_receipt_item(name, price, quantity): Add a new item
 - remove_receipt_item(id): Remove an item by ID
@@ -130,36 +146,37 @@ Cost Splitting:
 
 EXAMPLES:
 
-Receipt Items:
+Adding Items (single tool call):
 Command: "Add coffee for 3 dollars"
-Tool Call: add_receipt_item(name="coffee", price=300, quantity=1)
+→ add_receipt_item(name="coffee", price=300, quantity=1)
 
 Command: "Add two bagels at 2 fifty each"
-Tool Call: add_receipt_item(name="bagels", price=250, quantity=2)
+→ add_receipt_item(name="bagels", price=250, quantity=2)
 
+Removing/Updating Items (multiple tool calls):
 Command: "Remove the tax item"
-Step 1: get_current_receipt() → see current items with IDs
-Step 2: remove_receipt_item(id="<ID of TAX>")
+→ get_current_receipt()
+→ remove_receipt_item(id="<ID from get_current_receipt>")
 
 Command: "Change milk price to 4 dollars"
-Step 1: get_current_receipt() → find milk's ID
-Step 2: update_receipt_item(id="<ID of milk>", price=400)
+→ get_current_receipt()
+→ update_receipt_item(id="<ID from get_current_receipt>", price=400)
 
-Splitting Costs:
+Splitting Costs (multiple tool calls):
 Command: "Split coffee with Alice for 2 dollars"
-Step 1: get_current_receipt() → find coffee's ID
-Step 2: add_split(itemId="<ID of coffee>", person="Alice", amount=200)
+→ get_current_receipt()
+→ add_split(itemId="<ID from get_current_receipt>", person="Alice", amount=200)
 
 Command: "Split pizza evenly between Bob and Charlie"
-Step 1: get_current_receipt() → find pizza's ID
-Step 2: add_proportional_split(itemId="<ID of pizza>", person="Bob", shares=1, totalShares=2)
-Step 3: add_proportional_split(itemId="<ID of pizza>", person="Charlie", shares=1, totalShares=2)
+→ get_current_receipt()
+→ add_proportional_split(itemId="<ID>", person="Bob", shares=1, totalShares=2)
+→ add_proportional_split(itemId="<ID>", person="Charlie", shares=1, totalShares=2)
 
 Command: "Give Alice one third of the salad"
-Step 1: get_current_receipt() → find salad's ID
-Step 2: add_proportional_split(itemId="<ID of salad>", person="Alice", shares=1, totalShares=3)
+→ get_current_receipt()
+→ add_proportional_split(itemId="<ID>", person="Alice", shares=1, totalShares=3)
 
-Remember: Use get_current_receipt to see edits. ONE tool call per command. Prices in cents.`;
+Remember: Call get_current_receipt first when you need IDs. You can make multiple tool calls. Prices in cents.`;
 
 		// Handle tool calls
 		const handleToolCall = (toolCall: LiveServerToolCall) => {
@@ -170,6 +187,35 @@ Remember: Use get_current_receipt to see edits. ONE tool call per command. Price
 				const functionResponses = functionCalls.map((fc) => {
 					try {
 						let args = fc.args || {};
+
+						// Handle get_current_receipt - return current state
+						if (fc.name === "get_current_receipt") {
+							const items = currentStateRef.current.receipt?.items || [];
+							const splits = currentStateRef.current.splitSummary?.splits || [];
+
+							const itemsFormatted = items
+								.map((item) => `${item.name} ($${(item.price / 100).toFixed(2)}) [ID: ${item.id}]`)
+								.join(", ");
+
+							const splitsFormatted = splits.length > 0
+								? splits.map((split) => {
+									const itemName = items.find(i => i.id === split.itemId)?.name || "Unknown";
+									const amount = split.type === "absolute"
+										? `$${((split.amount || 0) / 100).toFixed(2)}`
+										: `${split.shares}/${split.totalShares}`;
+									return `${itemName}: ${split.person} gets ${amount} [Split ID: ${split.id}]`;
+								}).join(", ")
+								: "No splits";
+
+							return {
+								id: fc.id,
+								name: fc.name,
+								response: {
+									result: `Current Receipt Items: ${itemsFormatted}. Splits: ${splitsFormatted}`,
+									scheduling: FunctionResponseScheduling.INTERRUPT,
+								},
+							};
+						}
 
 						// Handle receipt item tools
 						if (fc.name === "add_receipt_item" && !args.id) {

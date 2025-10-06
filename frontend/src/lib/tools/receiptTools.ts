@@ -4,6 +4,15 @@ export const receiptTools: Tool[] = [
 	{
 		functionDeclarations: [
 			{
+				name: "get_current_receipt",
+				description: "Returns the current state of the receipt including all items with their IDs and all splits. Use this to check what items exist, find item IDs, or see current splits before making edits.",
+				parameters: {
+					type: "OBJECT" as Type,
+					properties: {},
+					required: [],
+				},
+			},
+			{
 				name: "add_receipt_item",
 				description: "Adds a new item to the receipt with the specified name, price, and quantity.",
 				parameters: {
